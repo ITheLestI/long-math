@@ -71,7 +71,7 @@ int2023_t from_string(const char* buff) {
     quot_len = j;
   }
   --k;
-  
+
   int2023_t result;
   int offset = result.kSize - k - 1;
   for (int i = k; i >= 0; --i) {
@@ -118,7 +118,7 @@ int2023_t& operator++(int2023_t& number) {
   return number;
 }
 
-int2023_t& operator-(int2023_t& number) {
+int2023_t operator-(int2023_t number) {
   for (int i = 0; i < 253; ++i) {
     number.bytes[i] = ~number.bytes[i];
   }
@@ -130,8 +130,31 @@ int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs) {
   return (lhs + (-temp));
 }
 
-int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs) {
-    return int2023_t();
+int2023_t operator*(int2023_t lhs, int2023_t rhs) {
+  const int kBase = 256;
+  const uint8_t mask = 0b10000000;
+  int2023_t result;
+
+  bool is_neg = (lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask);
+  if (lhs.bytes[0] & mask) {
+    lhs = -lhs;
+  }
+  if (rhs.bytes[0] & mask) {
+    rhs = -rhs;
+  }
+  uint8_t extra;
+  for (int i = result.kSize - 1; i >= 0; --i) {
+    extra = 0;
+    for (int j = result.kSize - 1; j >= 0; --j) {
+      int64_t temp = lhs.bytes[i] * rhs.bytes[j];
+      result.bytes[i + j - result.kSize + 1] += temp % 256;
+      extra = temp / 256;
+    }
+  }
+  if (is_neg) {
+    return -result;
+  }
+  return result;
 }
 
 int2023_t operator/(const int2023_t& lhs, const int2023_t& rhs) {
@@ -152,11 +175,20 @@ bool operator!=(const int2023_t& lhs, const int2023_t& rhs) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const int2023_t& value) {
+  bool has_started = false;
+  bool is_neg = (value.bytes[0] >> 6) & 1;
+  if (is_neg) {
+      stream << '-';
+  }
   for (int i = 0; i < value.kSize; ++i) {
-    if (i + 1 < value.kSize) {
-      stream << static_cast<short>(value.bytes[i]) << ' ';
-    } else {
-      stream << static_cast<short>(value.bytes[i]);
+    if ((value.bytes[i] != 0 && !is_neg) || (value.bytes[i] != 255 && is_neg)) {
+      has_started = true;
+    }
+    
+    if ((i + 1 < value.kSize) && has_started) {
+      stream << static_cast<int>(value.bytes[i]) << ' ';
+    } else if (has_started) {
+      stream << static_cast<int>(value.bytes[i]);
     }
   }
 

@@ -17,11 +17,11 @@ int2023_t operator+(const int2023_t& lhs, const int2023_t& rhs);
 
 int2023_t& operator++(int2023_t& number);
 
-int2023_t& operator-(int2023_t& number);
+int2023_t operator-(int2023_t number);
 
 int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs);
 
-int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs);
+int2023_t operator*(int2023_t lhs, int2023_t rhs);
 
 int2023_t operator/(const int2023_t& lhs, const int2023_t& rhs);
 
