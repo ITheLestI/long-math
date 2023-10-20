@@ -4,6 +4,7 @@
 
 struct int2023_t {
   static const size_t kSize = 253;
+  static const int kBase = 256;
   uint8_t bytes[kSize] = {0};
 };
 
@@ -17,7 +18,9 @@ int2023_t operator+(const int2023_t& lhs, const int2023_t& rhs);
 
 int2023_t& operator++(int2023_t& number);
 
-int2023_t operator-(int2023_t number);
+int2023_t& operator+=(int2023_t& number, const int2023_t& number2);
+
+int2023_t operator-(const int2023_t& number);
 
 int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs);
 
@@ -29,4 +32,8 @@ bool operator==(const int2023_t& lhs, const int2023_t& rhs);
 
 bool operator!=(const int2023_t& lhs, const int2023_t& rhs);
 
+bool operator<(int2023_t lhs, int2023_t rhs);
+
 std::ostream& operator<<(std::ostream& stream, const int2023_t& value);
+
+int2023_t abs(const int2023_t& value);
