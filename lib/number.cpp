@@ -12,7 +12,7 @@ int2023_t from_int(int32_t value) {
   }
 
   if (is_neg) {
-    for (int i = 0; i < result.kSize - sizeof(int32_t); ++i) {
+    for (int i = 0; i < int2023_t::kSize - sizeof(int32_t); ++i) {
       result.bytes[i] = 255;
     }
   }
@@ -71,7 +71,7 @@ int2023_t from_string(const char* buff) {
   }
   --k;
 
-  int offset = result.kSize - k - 1;
+  int offset = int2023_t::kSize - k - 1;
   for (int i = k; i >= 0; --i) {
     result.bytes[offset + k - i] = remainders[i];
   }
@@ -83,7 +83,7 @@ int2023_t from_string(const char* buff) {
 int2023_t operator+(const int2023_t& lhs, const int2023_t& rhs) {
   int2023_t number;
   int extra = 0;
-  int i = number.kSize-1;
+  int i = int2023_t::kSize-1;
   while (i >= 0) {
     number.bytes[i] = lhs.bytes[i] + rhs.bytes[i] + extra;
     if (lhs.bytes[i] + rhs.bytes[i] + extra >= 256) {
@@ -98,12 +98,12 @@ int2023_t operator+(const int2023_t& lhs, const int2023_t& rhs) {
 }
 
 int2023_t& operator++(int2023_t& number) {
-  if (number.bytes[number.kSize-1] < 255) {
-    ++number.bytes[number.kSize-1];
+  if (number.bytes[int2023_t::kSize-1] < 255) {
+    ++number.bytes[int2023_t::kSize-1];
     return number;
   }
   bool has_extra = true;
-  int i = number.kSize-1;
+  int i = int2023_t::kSize-1;
   while (i >= 0 && has_extra) {
     if (number.bytes[i] < 255) {
       has_extra = false;
@@ -125,6 +125,7 @@ int2023_t operator-(const int2023_t& number) {
   for (int i = 0; i < int2023_t::kSize; ++i) {
     result.bytes[i] = ~number.bytes[i];
   }
+
   return ++result;
 }
 
@@ -133,7 +134,7 @@ int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs) {
   return (lhs + (-temp));
 }
 
-int2023_t operator*(int2023_t lhs, int2023_t rhs) {
+int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs) {
   const uint8_t mask = 0b10000000;
   int2023_t result;
   int temp_arr[int2023_t::kSize] = {0};
@@ -141,22 +142,14 @@ int2023_t operator*(int2023_t lhs, int2023_t rhs) {
   bool is_neg = (lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask);
   int2023_t abs_lhs = abs(lhs);
   int2023_t abs_rhs = abs(rhs);
-  // if (lhs.bytes[0] & mask) {
-  //   lhs = -lhs;
-  // }
-  // if (rhs.bytes[0] & mask) {
-  //   rhs = -rhs;
-  // }
 
-  uint8_t extra;
   for (int i = int2023_t::kSize - 1; i >= 0; --i) {
-    extra = 0;
     for (int j = int2023_t::kSize - 1; j >= 0; --j) {
       int64_t temp = abs_lhs.bytes[i] * abs_rhs.bytes[j];
       temp_arr[(i + j) - int2023_t::kSize + 1] += temp;
     }
   }
-  for (int i = int2023_t::kSize-1; i >= 0; --i) {
+  for (int i = int2023_t::kSize - 1; i >= 1; --i) {
     temp_arr[i - 1] += temp_arr[i] / int2023_t::kBase;
     result.bytes[i] = temp_arr[i] % int2023_t::kBase;
   }
@@ -175,66 +168,40 @@ int2023_t operator/(const int2023_t& lhs, const int2023_t& rhs) {
   bool is_neg = (lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask);
   int2023_t abs_lhs = abs(lhs);
   int2023_t abs_rhs = abs(rhs);
-  // int2023_t avaliable_divisors[256]; // Includes 0 (from rhs*0 to rhs* 255)
-  // avaliable_divisors[0] = int2023_t();
-  // avaliable_divisors[1] = rhs;
-  // for (int i = 1; i < 256; ++i) {
-  //   avaliable_divisors[i] += avaliable_divisors[i-1];
-  // }
+  int2023_t avaliable_divisors[int2023_t::kBase]; // Includes numbers from rhs * 0 to rhs * 255
+  avaliable_divisors[0] = int2023_t();
+  for (int i = 1; i < int2023_t::kBase; ++i) {
+    avaliable_divisors[i] = avaliable_divisors[i-1] + abs_rhs;
+  }
 
-  // int2023_t result;
-  int start = 1;
-    std::cout << start << "\n";
+  int2023_t result;
+  int start_index = int2023_t::kSize - 1;
   for (size_t i = 0; i < int2023_t::kSize; ++i) {
     if (abs_lhs.bytes[i] != 0) {
-      start = i;
+      start_index = i;
       break;  
     }
   }
-  /*
-  std::cout << "start " << start_index << '\n';
-  printf("afaaf\n");
-  // size_t digits_count = int2023_t::kSize - start_index; // Column division
-  // std::cout << digits_count << "digits\n";
-  //while (int2023_t) quotuient != 0 // Use int2023_t as subject for division and substract inclomplete quotient
-  int2023_t temp; // == 0 <- make it the least number greater than rhs
-  // int j = 0;
+  int2023_t temp;
   for (int i = start_index; i < int2023_t::kSize; ++i) { // Single digit (one division operation)
-    // int start_i = i;
-    // while (i < digits_count && temp < rhs) { // continue
     ShiftLeftOnce(temp);
-    temp.bytes[int2023_t::kSize - 1] = lhs.bytes[i];
-     // always insert 0 if temp is not enough
-    // if (i - start_i > 1 && start_i != 0) {
-    //   quotient[start_index + j] = 0;
-    //   ++j;
-    // }
-    // }
-    int quotient_digit_index = 254;
+    temp.bytes[int2023_t::kSize - 1] = abs_lhs.bytes[i];
+
+    int quotient_digit_index = 255;
     while (temp < avaliable_divisors[quotient_digit_index]) {
       --quotient_digit_index;
     }
 
     ShiftLeftOnce(result);
     result.bytes[int2023_t::kSize - 1] = quotient_digit_index;
-    // quotient[start_index + j] = quotient_digit_index; // Shift temp (size - start) & substract from?
     temp = temp - avaliable_divisors[quotient_digit_index];
-    // ++j;
   }
-  // remainders[k] = temp;
-  // std::cout << temp << '\n';
 
-  // int2023_t result;
-  // int offset = result.kSize - k - 1;
-  // for (int i = k; i >= 0; --i) {
-  //   result.bytes[offset + k - i] = remainders[i];
-  // }
-  */
-  return int2023_t();
+  return is_neg ? -result : result;
 } 
 
 bool operator==(const int2023_t& lhs, const int2023_t& rhs) {
-  for (int i = 0; i < lhs.kSize; ++i) {
+  for (int i = 0; i < int2023_t::kSize; ++i) {
     if (lhs.bytes[i] != rhs.bytes[i]) {
       return false;
     }
@@ -246,44 +213,39 @@ bool operator!=(const int2023_t& lhs, const int2023_t& rhs) {
   return !(lhs == rhs);
 }
 
-bool operator<(int2023_t lhs, int2023_t rhs) {
+bool operator<(const int2023_t& lhs, const int2023_t& rhs) {
   const uint8_t mask = 0b10000000;
-  if ((lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask)) {
+  if ((lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask)) { // Different signs
     return (lhs.bytes[0] & mask) > (rhs.bytes[0] & mask);
   }
-  bool is_neg = (lhs.bytes[0] & mask) && (rhs.bytes[0] & mask);
-  if (lhs.bytes[0] & mask) {
-    lhs = -lhs;
-  }
-  if (rhs.bytes[0] & mask) {
-    rhs = -rhs;
-  }
 
-  for (int i = 0; (i < int2023_t::kSize) && (lhs.bytes[i] == rhs.bytes[i]); ++i) {
-    if ((lhs.bytes[i] > rhs.bytes[i]) ^ is_neg) {
+  for (int i = 0; (i < int2023_t::kSize); ++i) {
+    if (lhs.bytes[i] > rhs.bytes[i]) {
       return false;
-    } 
+    } else if (lhs.bytes[i] < rhs.bytes[i]) {
+      return true;
+    }
   }
   
-  return true;
+  return false;
 }
 
 std::ostream& operator<<(std::ostream& stream, const int2023_t& value) {
-  bool has_started = true;
+  bool has_started = false;
   bool is_neg = (value.bytes[0] >> 6) & 1;
   int2023_t absolute = value;
   if (is_neg) {
     stream << '-';
     absolute = -absolute;
   }
-  for (int i = 0; i < value.kSize; ++i) {
+  for (int i = 0; i < int2023_t::kSize; ++i) {
     if (absolute.bytes[i] != 0) {
       has_started = true;
     }
     
-    if ((i + 1 < absolute.kSize) && has_started) {
+    if ((i + 1 < int2023_t::kSize) && has_started) {
       stream << static_cast<int>(absolute.bytes[i]) << ' ';
-    } else if (has_started) {
+    } else if (has_started || i == int2023_t::kSize - 1) {
       stream << static_cast<int>(absolute.bytes[i]);
     }
   }
