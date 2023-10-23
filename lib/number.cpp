@@ -7,13 +7,13 @@ int2023_t from_int(int32_t value) {
   bool is_neg = (value >> 31) & 1;
 
   for (int i = 0; i < sizeof(int32_t); ++i) {
-    result.bytes[252-i] = value & mask;
+    result.bytes[int2023_t::kSize - 1 -i] = value & mask;
     value = value >> 8;
   }
 
   if (is_neg) {
     for (int i = 0; i < int2023_t::kSize - sizeof(int32_t); ++i) {
-      result.bytes[i] = 255;
+      result.bytes[i] = int2023_t::kBase - 1;
     }
   }
 
@@ -22,7 +22,7 @@ int2023_t from_int(int32_t value) {
 
 int2023_t from_string(const char* buff) {
   int2023_t result;
-  const bool is_neg = (buff[0] == '-') ? true : false;
+  const bool is_neg = (buff[0] == '-');
   const char* unsigned_buff = buff;
   size_t buff_len = strlen(buff);
   if (is_neg) {
@@ -30,11 +30,11 @@ int2023_t from_string(const char* buff) {
     buff_len -= 1;
   }
   uint8_t* digit_arr = new uint8_t[buff_len];
-  int i = 0;
-  while (i < buff_len) {
-    if ('0' <= unsigned_buff[i] && unsigned_buff[i] <= '9'){
-      digit_arr[i] = static_cast<uint8_t>(unsigned_buff[i] - '0');
-      ++i;
+  int d = 0;
+  while (d < buff_len) {
+    if ('0' <= unsigned_buff[d] && unsigned_buff[d] <= '9'){
+      digit_arr[d] = static_cast<uint8_t>(unsigned_buff[d] - '0');
+      ++d;
     } else {
       std::cerr << "Error while parsing string";
       delete[] digit_arr;
@@ -42,14 +42,14 @@ int2023_t from_string(const char* buff) {
     }
   }
 
-  int quotient[253] = {255};
-  uint8_t remainders[253] = {0};
+  int32_t quotient[int2023_t::kSize] = {255};
+  uint8_t remainders[int2023_t::kSize] = {0};
   std::copy(digit_arr, digit_arr + buff_len, std::begin(quotient));
 
-  size_t quot_len = buff_len; // Column division
-  int k = 0;
+  int quot_len = buff_len; // Column division
+  int digits_calculated = 0;
   while (quotient[0] != 0) {
-    uint64_t temp = 0;
+    int32_t temp = 0;
     int j = 0;
     for (int i = 0; i < quot_len;) {
       int start_i = i;
@@ -65,15 +65,15 @@ int2023_t from_string(const char* buff) {
       temp %= int2023_t::kBase;
       ++j;
     }
-    remainders[k] = temp;
-    ++k;
+    remainders[digits_calculated] = temp;
+    ++digits_calculated;
     quot_len = j;
   }
-  --k;
+  --digits_calculated;
 
-  int offset = int2023_t::kSize - k - 1;
-  for (int i = k; i >= 0; --i) {
-    result.bytes[offset + k - i] = remainders[i];
+  int offset = int2023_t::kSize - digits_calculated - 1;
+  for (int i = digits_calculated; i >= 0; --i) {
+    result.bytes[offset + digits_calculated - i] = remainders[i];
   }
   delete[] digit_arr;
   return is_neg ? -result : result;
@@ -98,12 +98,12 @@ int2023_t operator+(const int2023_t& lhs, const int2023_t& rhs) {
 }
 
 int2023_t& operator++(int2023_t& number) {
-  if (number.bytes[int2023_t::kSize-1] < 255) {
-    ++number.bytes[int2023_t::kSize-1];
+  if (number.bytes[int2023_t::kSize - 1] < int2023_t::kBase - 1) {
+    ++number.bytes[int2023_t::kSize - 1];
     return number;
   }
   bool has_extra = true;
-  int i = int2023_t::kSize-1;
+  int i = int2023_t::kSize - 1;
   while (i >= 0 && has_extra) {
     if (number.bytes[i] < 255) {
       has_extra = false;
@@ -131,7 +131,7 @@ int2023_t operator-(const int2023_t& number) {
 
 int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs) {
   int2023_t temp = rhs;
-  return (lhs + (-temp));
+  return lhs + (-temp);
 }
 
 int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs) {
@@ -145,7 +145,7 @@ int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs) {
 
   for (int i = int2023_t::kSize - 1; i >= 0; --i) {
     for (int j = int2023_t::kSize - 1; j >= 0; --j) {
-      int64_t temp = abs_lhs.bytes[i] * abs_rhs.bytes[j];
+      int64_t temp = static_cast<int64_t>(abs_lhs.bytes[i]) * static_cast<int64_t>(abs_rhs.bytes[j]);
       temp_arr[(i + j) - int2023_t::kSize + 1] += temp;
     }
   }
@@ -175,8 +175,8 @@ int2023_t operator/(const int2023_t& lhs, const int2023_t& rhs) {
   }
 
   int2023_t result;
-  int start_index = int2023_t::kSize - 1;
-  for (size_t i = 0; i < int2023_t::kSize; ++i) {
+  uint8_t start_index = int2023_t::kSize - 1;
+  for (uint8_t i = 0; i < int2023_t::kSize; ++i) {
     if (abs_lhs.bytes[i] != 0) {
       start_index = i;
       break;  
@@ -232,7 +232,7 @@ bool operator<(const int2023_t& lhs, const int2023_t& rhs) {
 
 std::ostream& operator<<(std::ostream& stream, const int2023_t& value) {
   bool has_started = false;
-  bool is_neg = (value.bytes[0] >> 6) & 1;
+  bool is_neg = (value.bytes[0] >> 7) & 1;
   int2023_t absolute = value;
   if (is_neg) {
     stream << '-';
