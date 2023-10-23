@@ -1,10 +1,14 @@
 #include "number.h"
 #include <cstring>
 
+bool IsNegative(int2023_t number) {
+  return (number.bytes[0] >> 7) & 1;
+}
+
 int2023_t from_int(int32_t value) {
   int2023_t result;
   const uint8_t mask = 0b11111111;
-  bool is_neg = (value >> 31) & 1;
+  bool is_neg = value < 0;
 
   for (int i = 0; i < sizeof(int32_t); ++i) {
     result.bytes[int2023_t::kSize - 1 -i] = value & mask;
@@ -135,11 +139,10 @@ int2023_t operator-(const int2023_t& lhs, const int2023_t& rhs) {
 }
 
 int2023_t operator*(const int2023_t& lhs, const int2023_t& rhs) {
-  const uint8_t mask = 0b10000000;
   int2023_t result;
   int temp_arr[int2023_t::kSize] = {0};
 
-  bool is_neg = (lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask);
+  bool is_neg = IsNegative(lhs) ^ IsNegative(rhs);
   int2023_t abs_lhs = abs(lhs);
   int2023_t abs_rhs = abs(rhs);
 
@@ -164,8 +167,7 @@ void ShiftLeftOnce(int2023_t& number) {
 }
 
 int2023_t operator/(const int2023_t& lhs, const int2023_t& rhs) {
-  const uint8_t mask = 0b10000000;
-  bool is_neg = (lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask);
+  bool is_neg = IsNegative(lhs) ^ IsNegative(rhs);
   int2023_t abs_lhs = abs(lhs);
   int2023_t abs_rhs = abs(rhs);
   int2023_t avaliable_divisors[int2023_t::kBase]; // Includes numbers from rhs * 0 to rhs * 255
@@ -215,8 +217,8 @@ bool operator!=(const int2023_t& lhs, const int2023_t& rhs) {
 
 bool operator<(const int2023_t& lhs, const int2023_t& rhs) {
   const uint8_t mask = 0b10000000;
-  if ((lhs.bytes[0] & mask) ^ (rhs.bytes[0] & mask)) { // Different signs
-    return (lhs.bytes[0] & mask) > (rhs.bytes[0] & mask);
+  if (IsNegative(lhs) ^ IsNegative(rhs)) { // Different signs
+    return IsNegative(lhs) > IsNegative(rhs);
   }
 
   for (int i = 0; (i < int2023_t::kSize); ++i) {
@@ -232,7 +234,7 @@ bool operator<(const int2023_t& lhs, const int2023_t& rhs) {
 
 std::ostream& operator<<(std::ostream& stream, const int2023_t& value) {
   bool has_started = false;
-  bool is_neg = (value.bytes[0] >> 7) & 1;
+  bool is_neg = IsNegative(value);
   int2023_t absolute = value;
   if (is_neg) {
     stream << '-';
@@ -254,5 +256,5 @@ std::ostream& operator<<(std::ostream& stream, const int2023_t& value) {
 }
 
 int2023_t abs(const int2023_t& value) {
-  return ((value.bytes[0] >> 7) & 1 ? -value : value);
+  return (IsNegative(value) ? -value : value);
 }
