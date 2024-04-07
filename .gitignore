@@ -34,7 +34,8 @@
 
 # VSCode files
 .vscode
+.cache
 
 # Cmake output
 
-build
+*build
